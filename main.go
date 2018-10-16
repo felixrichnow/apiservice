@@ -235,39 +235,48 @@ func GetBicycleStoresEndpoint(w http.ResponseWriter, req *http.Request) {
 //GetSpecificBikestoreLocation  fetches a specific store
 func GetSpecificBikestoreLocation(w http.ResponseWriter, req *http.Request) {
 
+	var returnRes []Result
 	//This is a big weakness, the variable has to be input "Sergels+Torg"
 	//Making routes with url.query would solve this but no time
 	params := mux.Vars(req)
 	if len(params) == 0 {
 		error := fmt.Sprintf("Failed to get bikestores for location perhaps you formated it wrong. Replace space with plus sign")
-		json.NewEncoder(w).Encode(error)
+		println(error)
 		return
 	}
 	var file []byte
 	location := params["location"]
 	//This function does both things since location RARELY ever changes coordinates (never?)
 	a, b := CallGeoAPIorReadFile(location)
-	bikefile, errfile := ioutil.ReadFile(location + ".json")
-	if errfile != nil {
-		file = CallGoogleNearbyPlaces(a, b, location)
-		writingfile, errfile := os.Create(location + ".json")
-		if errfile != nil {
-			println("File could not be created")
-		} else {
-			writingfile.Write(file)
-			writingfile.Close()
-		}
-	} else {
-		filestruc := new(Shop)
-		json.Unmarshal(bikefile, filestruc)
-		file = bikefile
-	}
-	fileShop := new(Shop)
-	json.Unmarshal(file, fileShop)
+	if len(a) == 0 {
+		println("Error")
+		//This was the last thing I needed to fix
 
+	} else {
+		bikefile, errfile := ioutil.ReadFile(location + ".json")
+		if errfile != nil {
+			file = CallGoogleNearbyPlaces(a, b, location)
+			writingfile, errfile := os.Create(location + ".json")
+			if errfile != nil {
+				println("File could not be created")
+			} else {
+				writingfile.Write(file)
+				writingfile.Close()
+			}
+		} else {
+			filestruc := new(Shop)
+			json.Unmarshal(bikefile, filestruc)
+			file = bikefile
+		}
+		fileShop := new(Shop)
+		json.Unmarshal(file, fileShop)
+
+		returnRes = fileShop.Results
+	}
 	enc := json.NewEncoder(w)
 	enc.SetEscapeHTML(false)
-	enc.Encode(fileShop.Results)
+	enc.Encode(returnRes)
+
 }
 
 //GetSpecificBikestore gets locations and nearby places but also searches for a store
